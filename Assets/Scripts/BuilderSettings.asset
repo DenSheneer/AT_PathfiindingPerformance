@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e4d605435a74a944e9bedcba7b3de405, type: 3}
+  m_Name: BuilderSettings
+  m_EditorClassIdentifier: 
+  WallPrefabs:
+  - {fileID: 7010139844746741370, guid: 57b9a02f491aa734b8ea09834c302303, type: 3}
+  FloorPrefabs:
+  - {fileID: 6851746602139634862, guid: 3964c23ae9838e84889ea6d65b5861aa, type: 3}
+  DoorPrefabs:
+  - {fileID: 5681086378678832987, guid: 7dbe890dfe7a4f34d97f9af2a172b459, type: 3}
+  WallCornerPrefab: {fileID: 7679218432919734444, guid: 77c8c1c2c662d3c41aad2278a254fde0, type: 3}
+  offsetBetweenAssets: 4
+  offsetWall: 2.25
