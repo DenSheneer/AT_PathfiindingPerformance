@@ -1,14 +1,9 @@
 using System.Collections.Generic;
+using System.Xml.Linq;
 using UnityEngine;
 
 public class DungeonGenerator : MonoBehaviour
 {
-    public class Cell
-    {
-        public bool isVisited = false;
-        public bool[] status = new bool[4];
-    }
-
     [Header("Dungeon settings")]
     [SerializeField] RoomBuilder builder;
     [SerializeField] BuilderSettings _settings;
@@ -19,10 +14,15 @@ public class DungeonGenerator : MonoBehaviour
     [SerializeField] int _roomWidth = 1;
     [SerializeField] int _roomLength = 1;
 
-    int startPos = 0;
-    List<Cell> board;
+    int _startPos = 0;
+    List<Cell> _board;
+    Dictionary<Vector2Int, Room> _roomsOnBoard;
 
-    void Start()
+    public Dictionary<Vector2Int, Room> RoomOnBoard { get { return _roomsOnBoard; } }
+
+    public List<Cell> Board { get { return _board; } }
+
+    void Awake()
     {
         _offset = new Vector2(_settings.offsetBetweenAssets * _roomWidth, _settings.offsetBetweenAssets * _roomLength);
         mazeGenerator();
@@ -30,16 +30,19 @@ public class DungeonGenerator : MonoBehaviour
 
     public void CreateDungeon()
     {
+        _roomsOnBoard = new Dictionary<Vector2Int, Room>();
+
         for (int x = 0; x < _size.x; x++)
         {
             for (int y = 0; y < _size.y; y++)
             {
-                Cell currentcell = board[x + y * _size.x];
+                Cell currentcell = _board[x + y * _size.x];
                 if (currentcell.isVisited)
                 {
-                    var newRoom = builder.CreateRoom(new Vector3(x * _offset.x, 0, -y * _offset.y), _roomWidth, _roomLength, transform);
+                    var boardPosition = new Vector2Int(x, y);
+                    var newRoom = builder.CreateRoom(new Vector3(x * _offset.x, 0, -y * _offset.y), boardPosition, _roomWidth, _roomLength, transform);
                     newRoom.UpdateRoom(currentcell.status);
-                    newRoom.name = $"Room {x}, {y}";
+                    _roomsOnBoard.Add(boardPosition, newRoom);
                 }
             }
         }
@@ -47,16 +50,16 @@ public class DungeonGenerator : MonoBehaviour
 
     void mazeGenerator()
     {
-        board = new List<Cell>();
+        _board = new List<Cell>();
         for (int x = 0; x < _size.x; x++)
         {
             for (int y = 0; y < _size.y; y++)
             {
-                board.Add(new Cell());
+                _board.Add(new Cell());
             }
         }
 
-        int currentCellIndex = startPos;
+        int currentCellIndex = _startPos;
         Stack<int> path = new Stack<int>();
 
         int k = 0;
@@ -64,13 +67,13 @@ public class DungeonGenerator : MonoBehaviour
         while (k < 1000)
         {
             k++;
-            board[currentCellIndex].isVisited = true;
-            if (currentCellIndex == board.Count - 1)
+            _board[currentCellIndex].isVisited = true;
+            if (currentCellIndex == _board.Count - 1)
             {
                 break;
             }
 
-            List<int> neighbours = checkNeighbours(currentCellIndex);
+            List<int> neighbours = getCellNeighbours(currentCellIndex);
 
             if (neighbours.Count == 0)
             {
@@ -89,16 +92,16 @@ public class DungeonGenerator : MonoBehaviour
                     if (newCell - 1 == currentCellIndex)
                     {
                         // right
-                        board[currentCellIndex].status[2] = true;
+                        _board[currentCellIndex].status[2] = true;
                         currentCellIndex = newCell;
-                        board[currentCellIndex].status[3] = true;
+                        _board[currentCellIndex].status[3] = true;
                     }
                     else
                     {
                         // down
-                        board[currentCellIndex].status[1] = true;
+                        _board[currentCellIndex].status[1] = true;
                         currentCellIndex = newCell;
-                        board[currentCellIndex].status[0] = true;
+                        _board[currentCellIndex].status[0] = true;
                     }
                 }
                 else
@@ -107,50 +110,85 @@ public class DungeonGenerator : MonoBehaviour
                     if (newCell + 1 == currentCellIndex)
                     {
                         // left
-                        board[currentCellIndex].status[3] = true;
+                        _board[currentCellIndex].status[3] = true;
                         currentCellIndex = newCell;
-                        board[currentCellIndex].status[2] = true;
+                        _board[currentCellIndex].status[2] = true;
                     }
                     else
                     {
                         // up
-                        board[currentCellIndex].status[0] = true;
+                        _board[currentCellIndex].status[0] = true;
                         currentCellIndex = newCell;
-                        board[currentCellIndex].status[1] = true;
+                        _board[currentCellIndex].status[1] = true;
                     }
                 }
             }
         }
         CreateDungeon();
     }
-    List<int> checkNeighbours(int cell)
+    public List<Room> GetRoomNeighbours(MyAgent agent, Room room)
+    {
+        List<Room> roomNeighbours = new List<Room>();
+
+        if (room.Doors[0]) // up
+        {
+            var up = _roomsOnBoard[room.BoardPosition + new Vector2Int(0, -1)];
+            if (!up.HasBeenVisitedBy(agent))
+                roomNeighbours.Add(up);
+        }
+
+        if (room.Doors[1])  // down
+        {
+            var down = _roomsOnBoard[room.BoardPosition + new Vector2Int(0, 1)];
+            if (!down.HasBeenVisitedBy(agent))
+                roomNeighbours.Add(down);
+        }
+
+        if (room.Doors[2]) // right
+        {
+            var right = _roomsOnBoard[room.BoardPosition + new Vector2Int(1, 0)];
+            if (!right.HasBeenVisitedBy(agent))
+                roomNeighbours.Add(right);
+        }
+
+        if (room.Doors[3]) // left
+        {
+            var left = _roomsOnBoard[room.BoardPosition + new Vector2Int(-1, 0)];
+            if (!left.HasBeenVisitedBy(agent))
+                roomNeighbours.Add(left);
+        }
+
+        return roomNeighbours;
+    }
+
+    List<int> getCellNeighbours(int cell)
     {
         List<int> neighbours = new List<int>();
 
         //      up
         int upNeighbourPos = cell - _size.x;
-        if (cell - _size.x >= 0 && !board[upNeighbourPos].isVisited)
+        if (cell - _size.x >= 0 && !_board[upNeighbourPos].isVisited)
         {
             neighbours.Add(upNeighbourPos);
         }
 
         //      down
         int downNeighbourPos = cell + _size.x;
-        if (cell + _size.x < board.Count && !board[downNeighbourPos].isVisited)
+        if (cell + _size.x < _board.Count && !_board[downNeighbourPos].isVisited)
         {
             neighbours.Add(downNeighbourPos);
         }
 
         //      right
         int rightNeighbourPos = cell + 1;
-        if ((cell + 1) % _size.x != 0 && !board[rightNeighbourPos].isVisited)
+        if ((cell + 1) % _size.x != 0 && !_board[rightNeighbourPos].isVisited)
         {
             neighbours.Add(rightNeighbourPos);
         }
 
         //      left
         int leftNeighbourPos = cell - 1;
-        if (cell % _size.x != 0 && !board[leftNeighbourPos].isVisited)
+        if (cell % _size.x != 0 && !_board[leftNeighbourPos].isVisited)
         {
             neighbours.Add(leftNeighbourPos);
         }
@@ -158,4 +196,10 @@ public class DungeonGenerator : MonoBehaviour
 
         return neighbours;
     }
+}
+
+public class Cell
+{
+    public bool isVisited = false;
+    public bool[] status = new bool[4];
 }

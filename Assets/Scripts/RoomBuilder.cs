@@ -6,44 +6,47 @@ using UnityEngine.UIElements;
 public class RoomBuilder : MonoBehaviour
 {
     [SerializeField] BuilderSettings _settings;
-    public Room CreateRoom(Vector3 position, int width = 1, int length = 1, Transform parent = null)
+    Vector2Int _position;
+    public Room CreateRoom(Vector3 position, Vector2Int boardPosition, int width = 1, int length = 1, Transform parent = null)
     {
-
         GameObject roomGO = new GameObject("Room");
         GameObject floorGO = new GameObject("Floor");
-        GameObject[] wallsegmentsDown = new GameObject[width];
-        GameObject[] wallsegmentsLeft = new GameObject[length];
         GameObject[] wallsegmentsUp = new GameObject[width];
         GameObject[] wallsegmentsRight = new GameObject[length];
+        GameObject[] wallsegmentsDown = new GameObject[width];
+        GameObject[] wallsegmentsLeft = new GameObject[length];
 
         Room room = roomGO.AddComponent<Room>();
+        Floor floor = floorGO.AddComponent<Floor>();
 
+
+        GameObject[] tiles = new GameObject[width * length];
+        int i = 0;
         if (_settings.FloorPrefabs.Length < 1 || _settings.WallPrefabs.Length < 1) { return null; }
         for (int x = 0; x < width; x++)
         {
             for (int z = 0; z < length; z++)
             {
-                int randomIndex = Random.Range(0, _settings.FloorPrefabs.Length);
-                var floorX = GameObject.Instantiate(_settings.FloorPrefabs[randomIndex]);
-                floorX.transform.position = new Vector3(_settings.offsetBetweenAssets * x, 0, 0);
-                floorX.transform.parent = floorGO.transform;
+                Vector3 floorPos = new Vector3(_settings.offsetBetweenAssets * x, 0, _settings.offsetBetweenAssets * z);
+                int randomGFXIndex = Random.Range(0, _settings.FloorPrefabs.Length);
+                var tileGO = GameObject.Instantiate(_settings.FloorPrefabs[randomGFXIndex], floor.transform);
+                tileGO.name = $"Tile {i}";
+                tileGO.transform.position = floorPos;
+                tiles[i] = tileGO;
 
-                Vector3 floorZPosition = new Vector3(_settings.offsetBetweenAssets * x, 0, _settings.offsetBetweenAssets * z);
-                int randomIndex2 = Random.Range(0, _settings.FloorPrefabs.Length);
-                var floorZ = GameObject.Instantiate(_settings.FloorPrefabs[randomIndex2]);
-                floorZ.transform.position = floorZPosition;
-                floorZ.transform.parent = floorGO.transform;
-
+                floor.Initilize(tiles);
 
 
                 if (x == 0)
-                    wallsegmentsLeft[z] = (makeWallSegment(floorZPosition + new Vector3(-2.17f, 0, 0), Quaternion.identity));
+                    wallsegmentsLeft[z] = (makeWallSegment(floorPos + new Vector3(-2.17f, 0, 0), Quaternion.identity));
                 if (x == width - 1)
-                    wallsegmentsRight[z] = (makeWallSegment(floorZPosition + new Vector3(2.17f, 0, 0), Quaternion.identity));
+                    wallsegmentsRight[z] = (makeWallSegment(floorPos + new Vector3(2.17f, 0, 0), Quaternion.identity));
                 if (z == 0)
-                    wallsegmentsDown[x] = makeWallSegment(floorZPosition + new Vector3(0, 0, -2.17f), Quaternion.Euler(0, 90.0f, 0));
+                    wallsegmentsDown[x] = makeWallSegment(floorPos + new Vector3(0, 0, -2.17f), Quaternion.Euler(0, 90.0f, 0));
                 if (z == length - 1)
-                    wallsegmentsUp[x] = makeWallSegment(floorZPosition + new Vector3(0, 0, 2.17f), Quaternion.Euler(0, 90.0f, 0));
+                    wallsegmentsUp[x] = makeWallSegment(floorPos + new Vector3(0, 0, 2.17f), Quaternion.Euler(0, 90.0f, 0));
+
+                i++;
             }
         }
 
@@ -53,7 +56,8 @@ public class RoomBuilder : MonoBehaviour
         walls[2] = makeWall(wallsegmentsRight, "WallRight");
         walls[3] = makeWall(wallsegmentsLeft, "WallLeft");
 
-        room.Initialize(transform, walls, floorGO);
+        room.Initialize(transform, walls, floor, boardPosition);
+        room.name = $"Room {boardPosition}";
         room.transform.position = position;
         return room;
     }

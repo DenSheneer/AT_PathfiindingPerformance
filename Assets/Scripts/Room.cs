@@ -1,21 +1,44 @@
 using NUnit.Framework;
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class Room : MonoBehaviour
 {
-    BuilderSettings _settings;
-    GameObject _floor;
-    Wall[] _walls = new Wall[4];
-    private bool[] openDoors = { false, false, false, false };
+    private BuilderSettings _settings;
+    private Floor _floor;
+    private Wall[] _walls = new Wall[4];
+    private Vector2Int _boardPosition;
+    private bool[] _doorBools = { false, false, false, false };
+    private List<MyAgent> visited = new List<MyAgent>();
 
-    public void Initialize(Transform parent, Wall[] walls, GameObject floor)
+
+    public Vector2Int BoardPosition { get { return _boardPosition; } }
+    public bool[] Doors { get { return _doorBools; } }
+
+    public void Visit(MyAgent agent)
+    {
+        visited.Add(agent);
+        agent.OnDone += agentDispose;
+    }
+    public bool HasBeenVisitedBy(MyAgent agent)
+    {
+        return visited.Contains(agent);
+    }
+
+    private void agentDispose(MyAgent agent)
+    {
+        visited.Remove(agent);
+        agent.OnDone -= agentDispose;
+    }
+
+    public void Initialize(Transform parent, Wall[] walls, Floor floor, Vector2Int boardPosition)
     {
         transform.parent = parent;
 
         _floor = floor;
+        _boardPosition = boardPosition;
         _floor.transform.parent = transform;
-
         _walls = walls;
         foreach (Wall wall in _walls)
         {
@@ -25,7 +48,17 @@ public class Room : MonoBehaviour
 
     public void UpdateRoom(bool[] newOpenDoors)
     {
+        _doorBools = newOpenDoors;
+
         for (int i = 0; i < _walls.Length; i++)
-            if (newOpenDoors[i]) { _walls[i].MakeDoorInMiddle(); }
+            if (_doorBools[i]) { _walls[i].MakeDoorInMiddle(); }
     }
+
+    public Vector3 MiddlePosition()
+    {
+        var middleTile = _floor.GetMiddleTile();
+        return middleTile.transform.position;
+    }
+
+
 }
