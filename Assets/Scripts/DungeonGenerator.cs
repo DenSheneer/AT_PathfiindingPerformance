@@ -197,7 +197,6 @@ public class DungeonGenerator : MonoBehaviour
         return neighbours;
     }
 }
-
 public class Cell
 {
     public bool isVisited = false;

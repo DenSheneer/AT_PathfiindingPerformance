@@ -454,7 +454,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   builder: {fileID: 1147502942}
   _settings: {fileID: 11400000, guid: a53722397135f47489d57d6b89a29df7, type: 2}
-  _size: {x: 10, y: 10}
+  _size: {x: 150, y: 150}
   _roomWidth: 5
   _roomLength: 3
 --- !u!4 &583859116
