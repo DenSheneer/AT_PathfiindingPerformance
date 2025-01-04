@@ -4,6 +4,9 @@ using MyBox;
 using UnityEditor.Experimental.GraphView;
 using UnityEngine;
 using UnityEngine.Events;
+using System.Threading.Tasks;
+using static UnityEngine.GraphicsBuffer;
+using System.IO;
 
 public class MyAgent : MonoBehaviour
 {
@@ -24,12 +27,12 @@ public class MyAgent : MonoBehaviour
     }
 
     [ButtonMethod]
-    public void Test()
+    public void TestAsync()
     {
         PathfindTo(_target);
     }
 
-    public void PathfindTo(Room target)
+    public async void PathfindTo(Room target)
     {
         List<Cell> board = new List<Cell>();
         for (int i = 0; i < _dungeon.Board.Count; i++)
@@ -37,36 +40,35 @@ public class MyAgent : MonoBehaviour
 
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
-        Room currentRoom = _start;
 
-        int k = 0;
-        while (k < 1000)
-        {
-            k++;
 
-            currentRoom.Visit(this);
-            if (currentRoom == target) { break; }
-
-            var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
-            if (neighbours.Count == 0)
-            {
-                if (path.Count == 0) { break; }
-                currentRoom = path.Pop();
-            }
-            else
-            {
-                path.Push(currentRoom);
-                currentRoom = neighbours[Random.Range(0, neighbours.Count)];
-
-            }
-            solution.Add(currentRoom);
-        }
-        Debug.Log($"Found solution with {solution.Count} steps");
+        await VisitNode(_start, target, path, solution, 0);
 
         foreach (var room in solution)
             Debug.Log(room.BoardPosition);
 
-        _start = target;
         OnDone?.Invoke(this);
+        Debug.Log($"Found solution with {solution.Count} steps");
+    }
+
+    public async Task VisitNode(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+    {
+        currentRoom.Visit(this);
+        if (currentRoom == target) { return; }
+
+        var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
+
+        if (neighbours.Count == 0)
+        {
+            if (path.Count == 0) { return; }
+            currentRoom = path.Pop();
+        }
+        else
+        {
+            path.Push(currentRoom);
+        }
+        Room nextRoom = neighbours[Random.Range(0, neighbours.Count)];
+        solution.Add(currentRoom);
+        await VisitNode(nextRoom, target, path, solution, runs);
     }
 }
