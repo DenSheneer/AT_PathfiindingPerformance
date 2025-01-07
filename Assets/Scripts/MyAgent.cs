@@ -10,6 +10,7 @@ using System.IO;
 using System;
 using UnityEngine.Profiling;
 using UnityEngine.InputSystem;
+using System.Drawing;
 
 public class MyAgent : MonoBehaviour
 {
@@ -26,6 +27,7 @@ public class MyAgent : MonoBehaviour
         {
             _start = _dungeon.RoomOnBoard[new Vector2Int(0, 0)];
             transform.position = _start.MiddlePosition();
+
         }
     }
     [ButtonMethod]
@@ -40,31 +42,48 @@ public class MyAgent : MonoBehaviour
     }
 
     [ButtonMethod]
-    public void TestAsync()
+    public async void TestAsync()
     {
         var timeNow = DateTime.Now;
-        PathfindTo(_target);
+        var path = await PathfindToAsync(_target);
         var timeAfter = DateTime.Now;
 
         var duration = timeAfter.Subtract(timeNow);
         Debug.Log("Async duration in milliseconds: " + duration.Milliseconds);
+
+
+        if (path != null)
+        {
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                Debug.DrawLine(path[i].MiddlePosition(), path[i + 1].MiddlePosition(), UnityEngine.Color.green, 60.0f);
+            }
+        }
     }
 
     [ButtonMethod]
     public async void TestMultithread()
     {
         var timeNow = DateTime.Now;
-        await Task.Run(() => PathfindToAsync(_target));
+        var path = await Task.Run(() => PathfindToMultithread(_target));
         var timeAfter = DateTime.Now;
 
         var duration = timeAfter.Subtract(timeNow);
         Debug.Log("Multithread duration in milliseconds: " + duration.Milliseconds);
+
+        if (path != null)
+        {
+            for (int i = 0; i < path.Count - 1; i++)
+            {
+                Debug.DrawLine(path[i].MiddlePosition(), path[i + 1].MiddlePosition(), UnityEngine.Color.green, 60.0f);
+            }
+        }
     }
 
 
-    public async Task PathfindToMultithread(Room target)
+    public async Task<List<Room>> PathfindToMultithread(Room target)
     {
-        if (target == null) { return; }
+        if (target == null) { return null; }
         List<Cell> board = new List<Cell>();
         for (int i = 0; i < _dungeon.Board.Count; i++)
             board.Add(new Cell());
@@ -75,14 +94,15 @@ public class MyAgent : MonoBehaviour
 
         await Task.Run(() => VisitNodeMultithread(_start, target, path, solution, 0));
 
-
         OnDone?.Invoke(this);
         Debug.Log($"Found solution with {solution.Count} steps");
+
+        return solution;
     }
 
-    public async void PathfindToAsync(Room target)
+    public async Task<List<Room>> PathfindToAsync(Room target)
     {
-        if (target == null) { return; }
+        if (target == null) { return null; }
         List<Cell> board = new List<Cell>();
         for (int i = 0; i < _dungeon.Board.Count; i++)
             board.Add(new Cell());
@@ -95,6 +115,8 @@ public class MyAgent : MonoBehaviour
 
         OnDone?.Invoke(this);
         Debug.Log($"Found solution with {solution.Count} steps");
+
+        return solution;
     }
 
     public void PathfindTo(Room target)
@@ -114,88 +136,96 @@ public class MyAgent : MonoBehaviour
         Debug.Log($"Found solution with {solution.Count} steps");
     }
 
-    public async Task VisitNodeMultithread(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+    public async Task<bool> VisitNodeMultithread(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
     {
+        if (currentRoom.HasBeenVisitedBy(this))
+            return false;
+
         currentRoom.Visit(this);
-        if (currentRoom == target) { return; }
+
+        if (currentRoom == target)
+        {
+            solution.Add(currentRoom);
+            return true;
+        }
 
         var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
 
-        if (neighbours.Count == 0)
+        foreach (var neighbor in neighbours)
         {
-            if (path.Count == 0) { return; }
-            currentRoom = path.Pop();
+            if (await Task.Run(() => VisitNodeMultithread(neighbor, target, path, solution, runs)))
+            {
+                solution.Add(currentRoom);
+                return true;
+            }
         }
-        else
-        {
-            path.Push(currentRoom);
-            var rnd = new System.Random();
-            int randomIndex = rnd.Next(0, neighbours.Count);
-            Room nextRoom = neighbours[randomIndex];
-            solution.Add(currentRoom);
-            await Task.Run(() => VisitNodeMultithread(nextRoom, target, path, solution, runs));
-            //await VisitNodeMultithread(nextRoom, target, path, solution, runs);
-        }
+
+        return false;
     }
 
-    public async Task VisitNodeAsync(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+    public async Task<bool> VisitNodeAsync(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
     {
+        if (currentRoom.HasBeenVisitedBy(this))
+            return false;
+
         currentRoom.Visit(this);
-        if (currentRoom == target) { return; }
+
+        if (currentRoom == target)
+        {
+            solution.Add(currentRoom);
+            return true;
+        }
 
         var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
 
-        if (neighbours.Count == 0)
+        foreach (var neighbor in neighbours)
         {
-            if (path.Count == 0) { return; }
-            currentRoom = path.Pop();
+            if (await VisitNodeAsync(neighbor, target, path, solution, runs))
+            {
+                solution.Add(currentRoom);
+                return true;
+            }
         }
-        else
-        {
-            path.Push(currentRoom);
-            var rnd = new System.Random();
-            int randomIndex = rnd.Next(0, neighbours.Count);
-            Room nextRoom = neighbours[randomIndex];
-            solution.Add(currentRoom);
-            await VisitNodeAsync(nextRoom, target, path, solution, runs);
-        }
+
+        return false;
     }
+
     public void VisitNode(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+{
+    currentRoom.Visit(this);
+    if (currentRoom == target) { return; }
+
+    var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
+
+    if (neighbours.Count == 0)
     {
-        currentRoom.Visit(this);
-        if (currentRoom == target) { return; }
-
-        var neighbours = _dungeon.GetRoomNeighbours(this, currentRoom);
-
-        if (neighbours.Count == 0)
-        {
-            if (path.Count == 0) { return; }
-            currentRoom = path.Pop();
-        }
-        else
-        {
-            path.Push(currentRoom);
-            var rnd = new System.Random();
-            int randomIndex = rnd.Next(0, neighbours.Count);
-            Room nextRoom = neighbours[randomIndex];
-            solution.Add(currentRoom);
-            VisitNode(nextRoom, target, path, solution, runs);
-        }
+        if (path.Count == 0) { return; }
+        currentRoom = path.Pop();
     }
-
-    public void Update()
+    else
     {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            TestNoAsync();
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            TestAsync();
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            TestMultithread();
-        }
+        path.Push(currentRoom);
+        var rnd = new System.Random();
+        int randomIndex = rnd.Next(0, neighbours.Count);
+        Room nextRoom = neighbours[randomIndex];
+        solution.Add(currentRoom);
+        VisitNode(nextRoom, target, path, solution, runs);
     }
+}
+
+public void Update()
+{
+    if (Input.GetKeyDown(KeyCode.Alpha1))
+    {
+        TestNoAsync();
+    }
+    if (Input.GetKeyDown(KeyCode.Alpha2))
+    {
+        TestAsync();
+    }
+    if (Input.GetKeyDown(KeyCode.Alpha3))
+    {
+        TestMultithread();
+    }
+}
 }

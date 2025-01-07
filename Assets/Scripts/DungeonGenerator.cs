@@ -64,7 +64,7 @@ public class DungeonGenerator : MonoBehaviour
 
         int k = 0;
 
-        while (k < 1000)
+        while (k < 10000)   // HUGE!
         {
             k++;
             _board[currentCellIndex].isVisited = true;
