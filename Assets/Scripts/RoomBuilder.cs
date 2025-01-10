@@ -56,7 +56,6 @@ public class RoomBuilder : MonoBehaviour
         List<MeshRenderer> renderers = new List<MeshRenderer>(); // To set the material of the found path later
         foreach (var tile in tiles)
         {
-            Debug.Log(tile.name);
             renderers.Add(tile.GetComponentInChildren<MeshRenderer>());
         }
         floor.FloorMeshes = renderers;

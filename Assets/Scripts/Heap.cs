@@ -40,13 +40,34 @@ public class Heap<T> where T : IHeapItem<T>
 
             if (childIndexLeft < currentItemCount)
             {
+                swapIndex = childIndexLeft;
 
                 if (childIndexRight < currentItemCount)
                 {
                     swapIndex = (items[childIndexLeft].CompareTo(items[childIndexRight]) < 0) ? childIndexRight : childIndexLeft;
                 }
+                if (item.CompareTo(items[swapIndex]) < 0)
+                {
+                    swap(item, items[swapIndex]);
+                }
+                else
+                    return;
             }
+            else
+                return;
         }
+    }
+
+    public void UpdateItem(T item)
+    {
+        sortUp(item);
+    }
+
+    public int Count { get { return currentItemCount; } }
+
+    public bool Contains(T item)
+    {
+        return Equals(items[item.HeapIndex], item);
     }
 
     private void sortUp(T item)

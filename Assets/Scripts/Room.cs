@@ -3,25 +3,27 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class Room : MonoBehaviour
+public class Room : MonoBehaviour, IHeapItem<Room>
 {
     [SerializeField] private BuilderSettings _settings;
-    [SerializeField] private Material _floorPathMaterial;
     private Floor _floor;
     private Wall[] _walls = new Wall[4];
     private Vector2Int _boardPosition;
     private bool[] _doorBools = { false, false, false, false };
-    private List<MyAgent> visited = new List<MyAgent>();
+    private HashSet<MyAgent> visited = new HashSet<MyAgent>();
 
 
     public int gCost = 0;
     public int hCost = 0;
+    private int heapIndex;
 
     public int fCost { get { return  gCost + hCost; } }
     public Room parent = null;
 
     public Vector2Int BoardPosition { get { return _boardPosition; } }
-    public bool[] Doors { get { return _doorBools; } }
+    public bool[] Doors { get { return _doorBools; } set { _doorBools = value; } }
+
+    public int HeapIndex { get => heapIndex; set => heapIndex = value; }
 
     public void Visit(MyAgent agent)
     {
@@ -67,10 +69,19 @@ public class Room : MonoBehaviour
         return middleTile.transform.position;
     }
 
-    public void SetFloorMaterial()
+    public void SetFloorMaterial(Material material)
     {
-        _floor.SetPathMaterial(_floorPathMaterial);
+        _floor.SetPathMaterial(material);
     }
 
+    public int CompareTo(Room other)
+    {
+        int compare = fCost.CompareTo(other.fCost);
+        if (compare == 0)
+        {
+            compare = hCost.CompareTo(other.hCost);
 
+        }
+        return -compare;
+    }
 }

@@ -13,6 +13,12 @@ public class MyAgent : MonoBehaviour
     [SerializeField] DungeonGenerator _dungeon;
     [SerializeField] Room _target = null;
 
+    [Header("Materials")]
+    [SerializeField] private Material _multiMaterial;
+    [SerializeField] private Material _normalMaterial;
+    [SerializeField] private Material _asyncMaterial;
+    [SerializeField] private Material _aStarMaterial;
+
     private Room _start;
 
     public UnityAction<MyAgent> OnDone;
@@ -36,7 +42,7 @@ public class MyAgent : MonoBehaviour
         var duration = timeAfter.Subtract(timeNow);
         Debug.Log("No Async duration in milliseconds: " + duration.Milliseconds);
 
-        drawPath(path);
+        drawPath(path, _normalMaterial);
     }
 
     [ButtonMethod]
@@ -49,7 +55,7 @@ public class MyAgent : MonoBehaviour
         var duration = timeAfter.Subtract(timeNow);
         Debug.Log("Async duration in milliseconds: " + duration.Milliseconds);
 
-        drawPath(path);
+        drawPath(path, _asyncMaterial);
     }
 
     [ButtonMethod]
@@ -62,25 +68,32 @@ public class MyAgent : MonoBehaviour
         var duration = timeAfter.Subtract(timeNow);
         Debug.Log("Multithread duration in milliseconds: " + duration.Milliseconds);
 
-        drawPath(path);
+        drawPath(path, _multiMaterial);
     }
 
     [ButtonMethod]
     public void TestAStar()
     {
+        var timeNow = DateTime.Now;
         var path = PathfindAStar();
-        drawPath(path);
+        var timeAfter = DateTime.Now;
+
+        var duration = timeAfter.Subtract(timeNow);
+        Debug.Log($"A*: found solution with {path.Count} steps in {duration.Milliseconds} ms");
+        drawPath(path, _aStarMaterial);
     }
 
-    private void drawPath(List<Room> path)
+    private void drawPath(List<Room> path, Material material)
     {
         if (path != null)
         {
             for (int i = 0; i < path.Count - 1; i++)
             {
-                path[i].SetFloorMaterial();
+                path[i].SetFloorMaterial(material);
                 Debug.DrawLine(path[i].MiddlePosition(), path[i + 1].MiddlePosition(), UnityEngine.Color.green, 60.0f);
             }
+            path[0].SetFloorMaterial(_normalMaterial);
+            path[path.Count-1].SetFloorMaterial(_normalMaterial);
         }
     }
 
@@ -227,22 +240,15 @@ public class MyAgent : MonoBehaviour
     {
         if (_target == null) { return null; }
         {
-            List<Room> openSet = new List<Room>();
+            Heap<Room> openSet = new Heap<Room>(_dungeon.MaxSize);
             HashSet<Room> closedSet = new HashSet<Room>();
 
             openSet.Add(_start);
 
             while (openSet.Count > 0)
             {
-                Room currentRoom = openSet[0];
-                for (int i = 1; i < openSet.Count; i++)
-                {
-                    if (openSet[i].fCost < currentRoom.fCost || openSet[i].fCost == currentRoom.fCost && openSet[i].hCost < currentRoom.hCost)
-                    {
-                        currentRoom = openSet[i];
-                    }
-                }
-                openSet.Remove(currentRoom);
+                Room currentRoom = openSet.RemoveFirst();
+
                 closedSet.Add(currentRoom);
                 if (currentRoom == _target)
                 {
@@ -279,10 +285,9 @@ public class MyAgent : MonoBehaviour
         while (currentRoom != start)
         {
             path.Add(currentRoom);
-            currentRoom.SetFloorMaterial();
-
             currentRoom = currentRoom.parent;
         }
+        path.Add(_start);
         path.Reverse();
         return path;
     }
