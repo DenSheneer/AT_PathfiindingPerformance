@@ -1,22 +1,34 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Xml.Linq;
+using TMPro;
 using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Windows;
 
 public class DungeonGenerator : MonoBehaviour
 {
     [Header("Dungeon settings")]
     [SerializeField] RoomBuilder builder;
     [SerializeField] BuilderSettings _settings;
-    [SerializeField] Vector2Int _size;
+
+    private Vector2Int _size;
     Vector2 _offset;
 
     [Header("Room settings")]
     [SerializeField] int _roomWidth = 1;
     [SerializeField] int _roomLength = 1;
 
+    [Header("Scene references")]
+    [SerializeField] TMP_InputField _inputX;
+    [SerializeField] TMP_InputField _inputY;
+
     int _startPos = 0;
     List<Cell> _board;
     Dictionary<Vector2Int, Room> _roomsOnBoard;
+
+    public Action<Room> OnDungeonGenerated;
 
     public Dictionary<Vector2Int, Room> RoomOnBoard { get { return _roomsOnBoard; } }
 
@@ -25,10 +37,9 @@ public class DungeonGenerator : MonoBehaviour
     void Awake()
     {
         _offset = new Vector2(_settings.offsetBetweenAssets * _roomWidth, _settings.offsetBetweenAssets * _roomLength);
-        mazeGenerator();
     }
 
-    public void CreateDungeon()
+    void createDungeon()
     {
         _roomsOnBoard = new Dictionary<Vector2Int, Room>();
 
@@ -46,10 +57,13 @@ public class DungeonGenerator : MonoBehaviour
                 }
             }
         }
+        OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
     }
 
-    void mazeGenerator()
+    public void MazeGenerator()
     {
+        _size.x = Int32.Parse(_inputX.text);
+        _size.y = Int32.Parse(_inputY.text);
         _board = new List<Cell>();
         for (int x = 0; x < _size.x; x++)
         {
@@ -85,7 +99,7 @@ public class DungeonGenerator : MonoBehaviour
             {
                 path.Push(currentCellIndex);
 
-                int newCell = neighbours[Random.Range(0, neighbours.Count)];
+                int newCell = neighbours[UnityEngine.Random.Range(0, neighbours.Count)];
                 if (newCell > currentCellIndex)
                 {
                     // down or right
@@ -124,8 +138,39 @@ public class DungeonGenerator : MonoBehaviour
                 }
             }
         }
-        CreateDungeon();
+        createDungeon();
     }
+    public List<Room> GetRoomNeighbours(Room room)
+    {
+        List<Room> roomNeighbours = new List<Room>();
+
+        if (room.Doors[0]) // up
+        {
+            var up = _roomsOnBoard[room.BoardPosition + new Vector2Int(0, -1)];
+            roomNeighbours.Add(up);
+        }
+
+        if (room.Doors[1])  // down
+        {
+            var down = _roomsOnBoard[room.BoardPosition + new Vector2Int(0, 1)];
+            roomNeighbours.Add(down);
+        }
+
+        if (room.Doors[2]) // right
+        {
+            var right = _roomsOnBoard[room.BoardPosition + new Vector2Int(1, 0)];
+            roomNeighbours.Add(right);
+        }
+
+        if (room.Doors[3]) // left
+        {
+            var left = _roomsOnBoard[room.BoardPosition + new Vector2Int(-1, 0)];
+            roomNeighbours.Add(left);
+        }
+
+        return roomNeighbours;
+    }
+
     public List<Room> GetRoomNeighbours(MyAgent agent, Room room)
     {
         List<Room> roomNeighbours = new List<Room>();

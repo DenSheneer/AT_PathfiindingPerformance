@@ -6,17 +6,19 @@ using UnityEngine.UIElements;
 public class RoomBuilder : MonoBehaviour
 {
     [SerializeField] BuilderSettings _settings;
+    [SerializeField] Room _roomPrefab;
     Vector2Int _position;
     public Room CreateRoom(Vector3 position, Vector2Int boardPosition, int width = 1, int length = 1, Transform parent = null)
     {
-        GameObject roomGO = new GameObject("Room");
+        Room room = Instantiate<Room>(_roomPrefab);
+        room.name = "Room";
+
         GameObject floorGO = new GameObject("Floor");
         GameObject[] wallsegmentsUp = new GameObject[width];
         GameObject[] wallsegmentsRight = new GameObject[length];
         GameObject[] wallsegmentsDown = new GameObject[width];
         GameObject[] wallsegmentsLeft = new GameObject[length];
 
-        Room room = roomGO.AddComponent<Room>();
         Floor floor = floorGO.AddComponent<Floor>();
 
 
@@ -27,6 +29,8 @@ public class RoomBuilder : MonoBehaviour
         {
             for (int z = 0; z < length; z++)
             {
+
+
                 Vector3 floorPos = new Vector3(_settings.offsetBetweenAssets * x, 0, _settings.offsetBetweenAssets * z);
                 int randomGFXIndex = Random.Range(0, _settings.FloorPrefabs.Length);
                 var tileGO = GameObject.Instantiate(_settings.FloorPrefabs[randomGFXIndex], floor.transform);
@@ -49,6 +53,13 @@ public class RoomBuilder : MonoBehaviour
                 i++;
             }
         }
+        List<MeshRenderer> renderers = new List<MeshRenderer>(); // To set the material of the found path later
+        foreach (var tile in tiles)
+        {
+            Debug.Log(tile.name);
+            renderers.Add(tile.GetComponentInChildren<MeshRenderer>());
+        }
+        floor.FloorMeshes = renderers;
 
         Wall[] walls = new Wall[4];
         walls[0] = makeWall(wallsegmentsUp, "WallUp");

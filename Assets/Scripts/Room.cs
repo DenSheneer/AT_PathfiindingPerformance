@@ -5,13 +5,20 @@ using UnityEngine;
 
 public class Room : MonoBehaviour
 {
-    private BuilderSettings _settings;
+    [SerializeField] private BuilderSettings _settings;
+    [SerializeField] private Material _floorPathMaterial;
     private Floor _floor;
     private Wall[] _walls = new Wall[4];
     private Vector2Int _boardPosition;
     private bool[] _doorBools = { false, false, false, false };
     private List<MyAgent> visited = new List<MyAgent>();
 
+
+    public int gCost = 0;
+    public int hCost = 0;
+
+    public int fCost { get { return  gCost + hCost; } }
+    public Room parent = null;
 
     public Vector2Int BoardPosition { get { return _boardPosition; } }
     public bool[] Doors { get { return _doorBools; } }
@@ -58,6 +65,11 @@ public class Room : MonoBehaviour
     {
         var middleTile = _floor.GetMiddleTile();
         return middleTile.transform.position;
+    }
+
+    public void SetFloorMaterial()
+    {
+        _floor.SetPathMaterial(_floorPathMaterial);
     }
 
 
