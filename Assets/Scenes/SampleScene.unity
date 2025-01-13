@@ -1146,8 +1146,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   builder: {fileID: 1147502942}
   _settings: {fileID: 11400000, guid: a53722397135f47489d57d6b89a29df7, type: 2}
-  _roomWidth: 1
-  _roomLength: 1
+  _roomWidth: 3
+  _roomLength: 3
   _inputX: {fileID: 85209630}
   _inputY: {fileID: 1947488258}
 --- !u!4 &583859116
@@ -1495,6 +1495,7 @@ GameObject:
   - component: {fileID: 925869288}
   - component: {fileID: 925869287}
   - component: {fileID: 925869286}
+  - component: {fileID: 925869290}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -1588,8 +1589,8 @@ Camera:
   near clip plane: 0.3
   far clip plane: 1000
   field of view: 100
-  orthographic: 1
-  orthographic size: 200
+  orthographic: 0
+  orthographic size: 0.9
   m_Depth: -1
   m_CullingMask:
     serializedVersion: 2
@@ -1620,6 +1621,19 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 90, y: 0, z: 0}
+--- !u!114 &925869290
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 925869285}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8e9551daaedd36f41af196936ff73733, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _dungeon: {fileID: 583859115}
 --- !u!1 &954924647
 GameObject:
   m_ObjectHideFlags: 0
@@ -2289,7 +2303,7 @@ MonoBehaviour:
       m_Calls:
       - m_Target: {fileID: 583859115}
         m_TargetAssemblyTypeName: DungeonGenerator, Assembly-CSharp
-        m_MethodName: MazeGenerator
+        m_MethodName: Regenerate
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

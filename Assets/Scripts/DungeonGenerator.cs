@@ -40,28 +40,21 @@ public class DungeonGenerator : MonoBehaviour
         _offset = new Vector2(_settings.offsetBetweenAssets * _roomWidth, _settings.offsetBetweenAssets * _roomLength);
     }
 
-    void createDungeon()
+    public void Regenerate()
     {
-        _roomsOnBoard = new Dictionary<Vector2Int, Room>();
-
-        for (int x = 0; x < _size.x; x++)
+        if (_roomsOnBoard != null)
         {
-            for (int y = 0; y < _size.y; y++)
+            foreach (var room in _roomsOnBoard.Values)
             {
-                Cell currentcell = _board[x + y * _size.x];
-                if (currentcell.isVisited)
-                {
-                    var boardPosition = new Vector2Int(x, y);
-                    var newRoom = builder.CreateRoom(new Vector3(x * _offset.x, 0, -y * _offset.y), boardPosition, _roomWidth, _roomLength, transform);
-                    newRoom.UpdateRoom(currentcell.status);
-                    _roomsOnBoard.Add(boardPosition, newRoom);
-                }
+                Destroy(room.gameObject);
             }
+            _roomsOnBoard.Clear();
+            _board.Clear();
         }
-        OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
-    }
 
-    public int MaxSize { get { return _size.x * _size.y; } }
+
+        MazeGenerator();
+    }
 
     public void MazeGenerator()
     {
@@ -147,6 +140,31 @@ public class DungeonGenerator : MonoBehaviour
             openRandomRoomDoors();
 
     }
+
+    void createDungeon()
+    {
+        _roomsOnBoard = new Dictionary<Vector2Int, Room>();
+
+        for (int x = 0; x < _size.x; x++)
+        {
+            for (int y = 0; y < _size.y; y++)
+            {
+                Cell currentcell = _board[x + y * _size.x];
+                if (currentcell.isVisited)
+                {
+                    var boardPosition = new Vector2Int(x, y);
+                    var newRoom = builder.CreateRoom(new Vector3(x * _offset.x, 0, -y * _offset.y), boardPosition, _roomWidth, _roomLength, transform);
+                    newRoom.UpdateRoom(currentcell.status);
+                    _roomsOnBoard.Add(boardPosition, newRoom);
+                }
+            }
+        }
+        OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
+    }
+    public Vector2 RealSize { get { return new Vector2(_size.x * _offset.x, _size.y * _offset.y); } }
+    public int MaxSize { get { return _size.x * _size.y; } }
+
+
 
     private void openRandomRoomDoors()
     {

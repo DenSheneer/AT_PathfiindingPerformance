@@ -1,12 +1,9 @@
-using NUnit.Framework;
 using System.Collections.Generic;
 using MyBox;
 using UnityEngine;
 using UnityEngine.Events;
 using System.Threading.Tasks;
 using System;
-using System.IO;
-using UnityEditor.Experimental.GraphView;
 
 public class MyAgent : MonoBehaviour
 {
@@ -90,10 +87,10 @@ public class MyAgent : MonoBehaviour
             for (int i = 0; i < path.Count - 1; i++)
             {
                 path[i].SetFloorMaterial(material);
-                Debug.DrawLine(path[i].MiddlePosition(), path[i + 1].MiddlePosition(), UnityEngine.Color.green, 60.0f);
+                //Debug.DrawLine(path[i].MiddlePosition(), path[i + 1].MiddlePosition(), UnityEngine.Color.green, 60.0f);
             }
             path[0].SetFloorMaterial(_normalMaterial);
-            path[path.Count-1].SetFloorMaterial(_normalMaterial);
+            path[path.Count - 1].SetFloorMaterial(_normalMaterial);
         }
     }
 
@@ -240,40 +237,55 @@ public class MyAgent : MonoBehaviour
     {
         if (_target == null) { return null; }
         {
-            Heap<Room> openSet = new Heap<Room>(_dungeon.MaxSize);
+            Heap<RoomData> openSet = new Heap<RoomData>(_dungeon.MaxSize);
             HashSet<Room> closedSet = new HashSet<Room>();
 
-            openSet.Add(_start);
+            var startRoomData = new RoomData(_start);
+            _start.MakeNewRoomData(this, startRoomData);
+            openSet.Add(startRoomData);
 
             while (openSet.Count > 0)
             {
-                Room currentRoom = openSet.RemoveFirst();
+                var currentRoom = openSet.RemoveFirst();
 
-                closedSet.Add(currentRoom);
-                if (currentRoom == _target)
+                closedSet.Add(currentRoom.roomObject);
+                if (currentRoom.roomObject == _target)
                 {
                     return retracePath(_start, _target);
                 }
 
-                foreach (var neighbour in _dungeon.GetRoomNeighbours(currentRoom))
+                foreach (var neighbour in _dungeon.GetRoomNeighbours(currentRoom.roomObject))
                 {
                     if (closedSet.Contains(neighbour)) { continue; }
 
-                    int newMoveCostToNeighbour = currentRoom.gCost + getDistance(currentRoom, neighbour);
-                    if (newMoveCostToNeighbour < neighbour.gCost || !openSet.Contains(neighbour))
-                    {
-                        neighbour.gCost = newMoveCostToNeighbour;
-                        neighbour.hCost = getDistance(neighbour, _target);
-                        neighbour.parent = currentRoom;
+                    int newMoveCostToNeighbour = currentRoom.gCost + getDistance(currentRoom.roomObject, neighbour);
 
-                        if (!openSet.Contains(neighbour))
+                    RoomData neighbourRoomData = null;
+
+                    if (!neighbour.pathfindingData.ContainsKey(this))
+                    {
+                        neighbour.MakeNewRoomData(this, new RoomData(neighbour));
+                    }
+
+                    neighbourRoomData = neighbour.pathfindingData[this];
+
+                    if (newMoveCostToNeighbour < neighbourRoomData.gCost ||
+                        !openSet.Contains(neighbourRoomData)
+                        )
+                    {
+                        neighbourRoomData.gCost = newMoveCostToNeighbour;
+                        neighbourRoomData.hCost = getDistance(neighbour, _target);
+                        neighbourRoomData.parent = currentRoom;
+
+                        if (!openSet.Contains(neighbour.pathfindingData[this]))
                         {
-                            openSet.Add(neighbour);
+                            openSet.Add(neighbourRoomData);
                         }
                     }
                 }
             }
         }
+        OnDone?.Invoke(this);
         return null;
     }
 
@@ -285,10 +297,13 @@ public class MyAgent : MonoBehaviour
         while (currentRoom != start)
         {
             path.Add(currentRoom);
-            currentRoom = currentRoom.parent;
+            currentRoom = currentRoom.pathfindingData[this].parent.roomObject;
         }
         path.Add(_start);
         path.Reverse();
+
+        OnDone?.Invoke(this);
+
         return path;
     }
 
