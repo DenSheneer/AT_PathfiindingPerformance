@@ -2,11 +2,8 @@ using MyBox;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Xml.Linq;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
-using UnityEngine.Windows;
 
 public class DungeonGenerator : MonoBehaviour
 {
@@ -15,19 +12,19 @@ public class DungeonGenerator : MonoBehaviour
     [SerializeField] BuilderSettings _settings;
 
     private Vector2Int _size;
-    Vector2 _offset;
+    private Vector2 _offset;
 
     [Header("Room settings")]
     [SerializeField] int _roomWidth = 1;
     [SerializeField] int _roomLength = 1;
 
     [Header("Scene references")]
-    [SerializeField] TMP_InputField _inputX;
-    [SerializeField] TMP_InputField _inputY;
+    [SerializeField] private TMP_InputField _inputX;
+    [SerializeField] private TMP_InputField _inputY;
 
     int _startPos = 0;
     List<Cell> _board;
-    Dictionary<Vector2Int, Room> _roomsOnBoard;
+    Dictionary<Vector2Int, Room> _roomsOnBoard = new Dictionary<Vector2Int, Room>();
 
     public Action<Room> OnDungeonGenerated;
 
@@ -42,17 +39,14 @@ public class DungeonGenerator : MonoBehaviour
 
     public void Regenerate()
     {
-        if (_roomsOnBoard != null)
+        if (_roomsOnBoard.Count > 0)
         {
             foreach (var room in _roomsOnBoard.Values)
             {
                 Destroy(room.gameObject);
             }
             _roomsOnBoard.Clear();
-            _board.Clear();
         }
-
-
         MazeGenerator();
     }
 
@@ -142,9 +136,7 @@ public class DungeonGenerator : MonoBehaviour
     }
 
     void createDungeon()
-    {
-        _roomsOnBoard = new Dictionary<Vector2Int, Room>();
-
+    {      
         for (int x = 0; x < _size.x; x++)
         {
             for (int y = 0; y < _size.y; y++)
@@ -161,7 +153,7 @@ public class DungeonGenerator : MonoBehaviour
         }
         OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
     }
-    public Vector2 RealSize { get { return new Vector2(_size.x * _offset.x, _size.y * _offset.y); } }
+    public Vector2 RealSize { get { return new Vector2((_size.x + 2) * _offset.x, (_size.y - 2) * _offset.y); } }
     public int MaxSize { get { return _size.x * _size.y; } }
 
 
