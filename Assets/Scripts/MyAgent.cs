@@ -76,8 +76,11 @@ public class MyAgent : MonoBehaviour
         var timeAfter = DateTime.Now;
 
         var duration = timeAfter.Subtract(timeNow);
-        Debug.Log($"A*: found solution with {path.Count} steps in {duration.Milliseconds} ms");
-        drawPath(path, _aStarMaterial);
+        if (path != null)
+        {
+            Debug.Log($"A*: found solution with {path.Count} steps in {duration.Milliseconds} ms");
+            drawPath(path, _aStarMaterial);
+        }
     }
 
     private void drawPath(List<Room> path, Material material)
