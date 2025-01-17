@@ -1,11 +1,9 @@
 using MyBox;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using TMPro;
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
