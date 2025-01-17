@@ -29,8 +29,6 @@ public class RoomBuilder : MonoBehaviour
         {
             for (int z = 0; z < length; z++)
             {
-
-
                 Vector3 floorPos = new Vector3(_settings.offsetBetweenAssets * x, 0, _settings.offsetBetweenAssets * z);
                 int randomGFXIndex = Random.Range(0, _settings.FloorPrefabs.Length);
                 var tileGO = GameObject.Instantiate(_settings.FloorPrefabs[randomGFXIndex], floor.transform);

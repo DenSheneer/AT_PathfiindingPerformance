@@ -1,10 +1,13 @@
 using MyBox;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Threading.Tasks;
 using TMPro;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class DungeonGenerator : MonoBehaviour
 {
@@ -26,6 +29,7 @@ public class DungeonGenerator : MonoBehaviour
     [SerializeField] private TMP_InputField _inputX;
     [SerializeField] private TMP_InputField _inputY;
     [SerializeField] private TMP_InputField _inputRandomSeed;
+    [SerializeField] private GameObject _loadingIndicator;
 
     int _startPos = 0;
     List<Cell> _board;
@@ -42,23 +46,31 @@ public class DungeonGenerator : MonoBehaviour
         _offset = new Vector2(_settings.offsetBetweenAssets * _roomWidth, _settings.offsetBetweenAssets * _roomLength);
     }
 
-    public void Regenerate()
+    public void Reload()
     {
-        if (_roomsOnBoard.Count > 0)
+        if (_board != null)
         {
-            foreach (var room in _roomsOnBoard.Values)
-            {
-                Destroy(room.gameObject);
-            }
-            _roomsOnBoard.Clear();
+            string currentSceneName = SceneManager.GetActiveScene().name;
+            SceneManager.LoadScene(currentSceneName);
         }
-        MazeGenerator();
+
+    }
+
+    public async void generateMaze()
+    {
+        _size.x = Int32.Parse(_inputX.text);
+        _size.y = Int32.Parse(_inputY.text);
+        randomSeed = Int32.Parse(_inputRandomSeed.text);
+
+        _loadingIndicator.SetActive(true);
+        await Task.Run(() => MazeGenerator());
+        await createDungeon();
+        _loadingIndicator.SetActive(false);
+        _inputRandomSeed.text = randomSeed.ToString();
     }
 
     public void MazeGenerator()
     {
-        _size.x = Int32.Parse(_inputX.text);
-        _size.y = Int32.Parse(_inputY.text);
         _board = new List<Cell>();
         for (int x = 0; x < _size.x; x++)
         {
@@ -72,11 +84,11 @@ public class DungeonGenerator : MonoBehaviour
         Stack<int> path = new Stack<int>();
 
         int k = 0;
-        randomSeed = Int32.Parse(_inputRandomSeed.text);
 
         randomSeed = randomSeed == 0 ? Guid.NewGuid().GetHashCode() : randomSeed;
+
+
         rand = new System.Random(randomSeed);
-        Debug.Log(randomSeed);
 
 
         while (k < 10000)   // HUGE!
@@ -138,20 +150,19 @@ public class DungeonGenerator : MonoBehaviour
                     }
                 }
             }
+            //createDungeon();
         }
-        createDungeon();
-
-        for (int i = 0; i < Mathf.Abs(_roomsOnBoard.Count * 0.1f); i++)  //  open all doors of 10% of the rooms
-            openRandomRoomDoors();
-
     }
 
-    void createDungeon()
-    {      
+    async Task createDungeon()
+    {
+        int yield = 0;
         for (int x = 0; x < _size.x; x++)
         {
             for (int y = 0; y < _size.y; y++)
             {
+                yield++;
+
                 Cell currentcell = _board[x + y * _size.x];
                 if (currentcell.isVisited)
                 {
@@ -159,10 +170,17 @@ public class DungeonGenerator : MonoBehaviour
                     var newRoom = builder.CreateRoom(new Vector3(x * _offset.x, 0, -y * _offset.y), boardPosition, _roomWidth, _roomLength, transform);
                     newRoom.UpdateRoom(currentcell.status);
                     _roomsOnBoard.Add(boardPosition, newRoom);
+
+                    if (yield % 50 == 0)
+                        await Task.Yield();
                 }
             }
         }
         OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
+
+        for (int i = 0; i < Mathf.Abs(_roomsOnBoard.Count * 0.1f); i++)  //  open all doors of 10% of the rooms
+            openRandomRoomDoors();
+
     }
     public Vector2 RealSize { get { return new Vector2((_size.x + 2) * _offset.x, (_size.y - 2) * _offset.y); } }
     public int MaxSize { get { return _size.x * _size.y; } }
