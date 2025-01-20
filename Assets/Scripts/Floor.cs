@@ -5,7 +5,10 @@ using static UnityEngine.Rendering.HableCurve;
 public class Floor : MonoBehaviour
 {
     GameObject[] _tiles = null;
-    public List<MeshRenderer> FloorMeshes = new List<MeshRenderer>();
+    private List<MeshRenderer> _floorMeshes;
+    private Material _defaultFloorMaterial;
+
+    public List<MeshRenderer> FloorMeshes { set { _floorMeshes = value; _defaultFloorMaterial = _floorMeshes[0].material; } }
 
     public void Initilize(GameObject[] tiles)
     {
@@ -19,9 +22,14 @@ public class Floor : MonoBehaviour
     }
     public void SetPathMaterial(Material material)
     {
-        foreach (var tile in FloorMeshes)
+        foreach (var tile in _floorMeshes)
         {
             tile.material = material;
         }
+    }
+
+    public void RestoreDefaultFloor()
+    {        
+        SetPathMaterial(_defaultFloorMaterial);
     }
 }

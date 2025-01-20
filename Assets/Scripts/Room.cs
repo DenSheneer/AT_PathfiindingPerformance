@@ -68,6 +68,10 @@ public class Room : MonoBehaviour
     {
         _floor.SetPathMaterial(material);
     }
+    public void RestoreDefaultFloor()
+    {
+        _floor.RestoreDefaultFloor();
+    }
 
     public void MakeNewRoomData(MyAgent agent, RoomData roomData)
     {

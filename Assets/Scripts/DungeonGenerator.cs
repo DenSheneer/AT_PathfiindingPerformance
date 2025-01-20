@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.UI;
 
 public class DungeonGenerator : MonoBehaviour
 {
@@ -20,13 +21,6 @@ public class DungeonGenerator : MonoBehaviour
     [SerializeField] private int _roomWidth = 1;
     [SerializeField] private int _roomLength = 1;
 
-    private int randomSeed = 0;
-    System.Random rand;
-
-    [Header("Scene references")]
-    [SerializeField] private TMP_InputField _inputX;
-    [SerializeField] private TMP_InputField _inputY;
-    [SerializeField] private TMP_InputField _inputRandomSeed;
     [SerializeField] private GameObject _loadingIndicator;
 
     int _startPos = 0;
@@ -34,6 +28,7 @@ public class DungeonGenerator : MonoBehaviour
     Dictionary<Vector2Int, Room> _roomsOnBoard = new Dictionary<Vector2Int, Room>();
 
     public Action<Room> OnDungeonGenerated;
+    public Action OnDungeonGenerateStart;
 
     public Dictionary<Vector2Int, Room> RoomOnBoard { get { return _roomsOnBoard; } }
 
@@ -54,17 +49,16 @@ public class DungeonGenerator : MonoBehaviour
 
     }
 
-    public async void generateMaze()
+    public async void GenerateMaze()
     {
-        _size.x = Int32.Parse(_inputX.text);
-        _size.y = Int32.Parse(_inputY.text);
-        randomSeed = Int32.Parse(_inputRandomSeed.text);
+        OnDungeonGenerateStart?.Invoke();
+        _size.x = SuperClass.Instance.SizeX;
+        _size.y = SuperClass.Instance.SizeY;
 
         _loadingIndicator.SetActive(true);
         await Task.Run(() => MazeGenerator());
         await createDungeon();
         _loadingIndicator.SetActive(false);
-        _inputRandomSeed.text = randomSeed.ToString();
     }
 
     public void MazeGenerator()
@@ -82,11 +76,6 @@ public class DungeonGenerator : MonoBehaviour
         Stack<int> path = new Stack<int>();
 
         int k = 0;
-
-        randomSeed = randomSeed == 0 ? Guid.NewGuid().GetHashCode() : randomSeed;
-
-
-        rand = new System.Random(randomSeed);
 
 
         while (k < 10000)   // HUGE!
@@ -110,7 +99,7 @@ public class DungeonGenerator : MonoBehaviour
             {
                 path.Push(currentCellIndex);
 
-                int newCell = neighbours[rand.Next(0, neighbours.Count)];
+                int newCell = neighbours[SuperClass.Instance.Random.Next(0, neighbours.Count)];
                 if (newCell > currentCellIndex)
                 {
                     // down or right
@@ -148,7 +137,6 @@ public class DungeonGenerator : MonoBehaviour
                     }
                 }
             }
-            //createDungeon();
         }
     }
 
@@ -187,7 +175,7 @@ public class DungeonGenerator : MonoBehaviour
 
     private void openRandomRoomDoors()
     {
-        var randomRoom = _roomsOnBoard.Values.ToArray()[rand.Next(0, _roomsOnBoard.Count)];
+        var randomRoom = _roomsOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _roomsOnBoard.Count)];
 
         bool[] allDoorsOpen = { true, true, true, true };
         randomRoom.Doors = allDoorsOpen;
