@@ -36,11 +36,3 @@ public class UI_Script : MonoBehaviour
         }
     }
 }
-
-    public enum EPathFindMode
-    {
-        DFS = 0,
-        AsyncDFS = 1,
-        MT_DFS = 2,
-        Astar = 3
-    }

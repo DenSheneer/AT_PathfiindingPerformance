@@ -8,11 +8,15 @@ using System.Threading;
 using System.Linq;
 using System.Collections;
 using Unity.VisualScripting;
+using System.Diagnostics;
+using Debug = UnityEngine.Debug;
+using TMPro;
 
 public class MyAgent : MonoBehaviour
 {
     [SerializeField] DungeonGenerator _dungeon;
     [SerializeField] Room _target = null;
+    [SerializeField] private TMP_Text _textRuns;
 
     [Header("Materials")]
     [SerializeField] private Material _multiMaterial;
@@ -21,17 +25,22 @@ public class MyAgent : MonoBehaviour
     [SerializeField] private Material _aStarMaterial;
 
     Task _pathfindLoopTask;
-    CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+    CancellationTokenSource cancellationTokenSource = null;
+    PathfindingJsonWriter writer = new PathfindingJsonWriter();
 
     private Room _start;
     public UnityAction<MyAgent> OnDone;
     List<Room> _currentPath = null;
     Material _currentMaterial = null;
+    private EPathFindMode _currentpathFindmode;
+    private List<PathfindResult> _results = new List<PathfindResult>();
+
+    int _runs = 0;
 
     public void Start()
     {
 
-        SuperClass.Instance.DrawPathButtonClicked.AddListener(() => { drawPath(); });
+        SuperClass.Instance.DrawPathButtonClicked.AddListener(() => { drawPath(_currentPath); });
 
         _dungeon.OnDungeonGenerated += (deepestRoom) =>
         {
@@ -40,40 +49,17 @@ public class MyAgent : MonoBehaviour
             transform.position = _start.MiddlePosition();
         };
     }
-    public void TestNoAsync()
-    {
-        _currentPath = PathfindTo(_target);
-        _currentMaterial = _normalMaterial;
-    }
 
-    public async Task TestAsync(CancellationToken cancellationToken)
+    private void drawPath(List<Room> path)
     {
-        _currentPath = await PathfindToAsync(_target, cancellationToken);
-        _currentMaterial = _asyncMaterial;
-    }
-
-    public async Task TestMultithread(CancellationToken cancellationToken)
-    {
-        _currentPath = await Task.Run(() => PathfindToMultithread(_target, cancellationToken));
-        _currentMaterial = _multiMaterial;
-    }
-
-    public void TestAStar()
-    {
-        _currentPath = PathfindAStar();
-        _currentMaterial = _aStarMaterial;
-    }
-
-    private void drawPath()
-    {
-        if (_currentPath != null)
+        if (path != null)
         {
-            foreach (var room in _currentPath)
+            foreach (var room in path)
             {
                 room.SetFloorMaterial(_currentMaterial);
             }
-            _currentPath[0].SetFloorMaterial(_normalMaterial);
-            _currentPath[_currentPath.Count - 1].SetFloorMaterial(_normalMaterial);
+            path[0].SetFloorMaterial(_normalMaterial);
+            path[_currentPath.Count - 1].SetFloorMaterial(_normalMaterial);
         }
     }
     private void erasePath(List<Room> path)
@@ -86,22 +72,21 @@ public class MyAgent : MonoBehaviour
             }
         }
     }
-
-    public List<Room> PathfindTo(Room target)
+    public List<Room> PathfindTo()
     {
-        if (target == null) { return null; }
+        if (_target == null) { return null; }
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-        VisitNode(_start, target, path, solution, 0);
+        VisitNode(_start, _target, path, solution, 0);
 
         OnDone?.Invoke(this);
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToMultithread(Room target, CancellationToken cancellationToken)
+    public async Task<List<Room>> PathfindToMultithread(CancellationToken cancellationToken)
     {
-        if (target == null) { return null; }
+        if (_target == null) { return null; }
 
         cancellationToken.ThrowIfCancellationRequested();
 
@@ -109,22 +94,22 @@ public class MyAgent : MonoBehaviour
         Stack<Room> path = new Stack<Room>();
 
            
-        await Task.Run(() => VisitNodeMultithread(_start, target, path, solution, 0, cancellationToken));
+        await Task.Run(() => VisitNodeMultithread(_start, _target, path, solution, 0, cancellationToken));
 
         OnDone?.Invoke(this);
 
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToAsync(Room target, CancellationToken cancellationToken)
+    public async Task<List<Room>> PathfindToAsync(CancellationToken cancellationToken)
     {
-        if (target == null) { return null; }
+        if (_target == null) { return null; }
 
         cancellationToken.ThrowIfCancellationRequested();
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-        await VisitNodeAsync(_start, target, path, solution, 0, cancellationToken);
+        await VisitNodeAsync(_start, _target, path, solution, 0, cancellationToken);
 
         OnDone?.Invoke(this);
         return solution;
@@ -310,40 +295,65 @@ public class MyAgent : MonoBehaviour
     {
 
         StopRepeatPathfind();
+        _currentpathFindmode = mode;
+        _runs = 0;
 
         switch (mode)
         {
             case EPathFindMode.DFS:
-                _pathfindLoopTask = randomLoopAlgorithm(TestNoAsync, cancellationTokenSource.Token);
+                _pathfindLoopTask = randomLoopAlgorithm(PathfindTo, cancellationTokenSource.Token);
+                _currentMaterial = _normalMaterial;
                 break;
             case EPathFindMode.AsyncDFS:
-                _pathfindLoopTask = asyncRandomLoopAlgorithm(TestAsync, cancellationTokenSource.Token);
+                _currentMaterial = _asyncMaterial;
+                _pathfindLoopTask = asyncRandomLoopAlgorithm(PathfindToAsync, cancellationTokenSource.Token);
                 break;
             case EPathFindMode.MT_DFS:
-                _pathfindLoopTask = asyncRandomLoopAlgorithm(TestMultithread, cancellationTokenSource.Token);
+                _currentMaterial = _multiMaterial;
+
+                _pathfindLoopTask = asyncRandomLoopAlgorithm(PathfindToMultithread, cancellationTokenSource.Token);
 
                 break;
             case EPathFindMode.Astar:
-                _pathfindLoopTask = randomLoopAlgorithm(TestAStar, cancellationTokenSource.Token);
+                _currentMaterial = _aStarMaterial;
+                _pathfindLoopTask = randomLoopAlgorithm(PathfindAStar, cancellationTokenSource.Token);
                 break;
 
         }
         await _pathfindLoopTask;
     }
 
-    private async Task randomLoopAlgorithm(Action pathFindMethod, CancellationToken cancellationToken)
+    private async Task randomLoopAlgorithm(Func<List<Room>> pathFindMethod, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             erasePath(_currentPath);
 
             _target = _dungeon.RoomOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _dungeon.RoomOnBoard.Count)];
-            pathFindMethod();
+
+            var stopwatch = Stopwatch.StartNew();
+            _currentPath = pathFindMethod();
+            stopwatch.Stop();
+
+            var result = new PathfindResult(SuperClass.Instance.SizeX,
+                                           SuperClass.Instance.SizeY,
+                                           _currentpathFindmode,
+                                           stopwatch.Elapsed.TotalMilliseconds,
+                                           _currentPath.Count,
+                                           SuperClass.Instance.RandomSeed
+                                           );
+
+            _results.Add(result);
 
             if (SuperClass.Instance.AutoDraw)
-                drawPath();
+                drawPath(_currentPath);
+
+            _runs++;
+            _textRuns.text = _runs.ToString();
 
             _start = _target;
+
+
             try
             {
                 await Task.Delay(SuperClass.Instance.PathfindCooldownMS, cancellationToken);
@@ -355,19 +365,37 @@ public class MyAgent : MonoBehaviour
         }
     }
 
-    public async Task asyncRandomLoopAlgorithm(Func<CancellationToken, Task> awaitablePathfindMethod, CancellationToken cancellationToken)
+    public async Task asyncRandomLoopAlgorithm(Func<CancellationToken, Task<List<Room>>> awaitablePathfindMethod, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             erasePath(_currentPath);
 
             _target = _dungeon.RoomOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _dungeon.RoomOnBoard.Count)];
-            await awaitablePathfindMethod(cancellationToken);
+            Debug.Log(_target.name);
+
+            var stopwatch = Stopwatch.StartNew();
+            _currentPath = await awaitablePathfindMethod(cancellationToken);
+            stopwatch.Stop();
+
+            var result = new PathfindResult(SuperClass.Instance.SizeX,
+                                           SuperClass.Instance.SizeY,
+                                           _currentpathFindmode,
+                                           stopwatch.Elapsed.TotalMilliseconds,
+                                           _currentPath.Count,
+                                           SuperClass.Instance.RandomSeed
+                                           );
+
+            _results.Add(result);
 
             if (SuperClass.Instance.AutoDraw)
-                drawPath();
+                drawPath(_currentPath);
+
+            _runs++;
+            _textRuns.text = _runs.ToString();
 
             _start = _target;
+
             try
             {
                 await Task.Delay(SuperClass.Instance.PathfindCooldownMS, cancellationToken);
@@ -394,6 +422,12 @@ public class MyAgent : MonoBehaviour
 
         cancellationTokenSource = new CancellationTokenSource();
         _pathfindLoopTask = null;
+
+        // Write to JSON
+        writer.AppendPathfindingResultToJson($"{Application.persistentDataPath}/PathfindingResult.json", _results);
+        Debug.Log("saved to: " + Application.persistentDataPath);
+
+        // Output file will be saved in the executable's working directory
     }
 }
 

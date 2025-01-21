@@ -14,7 +14,7 @@ public class SuperClass : MonoBehaviour
     [SerializeField] private TMP_InputField _inputY;
     [SerializeField] private TMP_InputField _pfCooldownMS;
     [SerializeField] private TMP_InputField _inputRandomSeed;
-    [SerializeField] private Toggle _autoDraw;
+      [SerializeField] private Toggle _autoDraw;
     [SerializeField] private Button _manualDrawButton;
     [SerializeField] private DungeonGenerator _dungeon;
 
@@ -25,6 +25,8 @@ public class SuperClass : MonoBehaviour
     public int SizeX { get { return Int32.Parse(_inputX.text); } }
     public int SizeY { get { return Int32.Parse(_inputY.text); } }
     public bool AutoDraw { get { return _autoDraw.isOn; } }
+
+    public int RandomSeed { get { return randomSeed; } }
 
     public UnityEvent DrawPathButtonClicked { get { return _manualDrawButton.onClick; } }
 
