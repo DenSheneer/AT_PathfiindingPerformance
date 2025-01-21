@@ -46,15 +46,15 @@ public class MyAgent : MonoBehaviour
         _currentMaterial = _normalMaterial;
     }
 
-    public async Task TestAsync()
+    public async Task TestAsync(CancellationToken cancellationToken)
     {
-        _currentPath = await PathfindToAsync(_target);
+        _currentPath = await PathfindToAsync(_target, cancellationToken);
         _currentMaterial = _asyncMaterial;
     }
 
-    public async Task TestMultithread()
+    public async Task TestMultithread(CancellationToken cancellationToken)
     {
-        _currentPath = await Task.Run(() => PathfindToMultithread(_target));
+        _currentPath = await Task.Run(() => PathfindToMultithread(_target, cancellationToken));
         _currentMaterial = _multiMaterial;
     }
 
@@ -99,33 +99,32 @@ public class MyAgent : MonoBehaviour
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToMultithread(Room target)
+    public async Task<List<Room>> PathfindToMultithread(Room target, CancellationToken cancellationToken)
     {
-        if (target == null) { Debug.Log("null!"); return null; }
+        if (target == null) { return null; }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-
-        //await Task.Run(() => VisitNodeMultithread(_start, target, path, solution, 0));
-        await VisitNodeMultithread(_start, target, path, solution, 0);
+           
+        await Task.Run(() => VisitNodeMultithread(_start, target, path, solution, 0, cancellationToken));
 
         OnDone?.Invoke(this);
 
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToAsync(Room target)
+    public async Task<List<Room>> PathfindToAsync(Room target, CancellationToken cancellationToken)
     {
         if (target == null) { return null; }
-        List<Cell> board = new List<Cell>();
-        for (int i = 0; i < _dungeon.Board.Count; i++)
-            board.Add(new Cell());
 
+        cancellationToken.ThrowIfCancellationRequested();
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-
-        await VisitNodeAsync(_start, target, path, solution, 0);
+        await VisitNodeAsync(_start, target, path, solution, 0, cancellationToken);
 
         OnDone?.Invoke(this);
         return solution;
@@ -159,8 +158,10 @@ public class MyAgent : MonoBehaviour
         return false;
     }
 
-    public async Task<bool> VisitNodeAsync(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+    public async Task<bool> VisitNodeAsync(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (currentRoom.HasBeenVisitedBy(this))
             return false;
 
@@ -176,7 +177,9 @@ public class MyAgent : MonoBehaviour
 
         foreach (var neighbor in neighbours)
         {
-            if (await VisitNodeAsync(neighbor, target, path, solution, runs))
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (await VisitNodeAsync(neighbor, target, path, solution, runs, cancellationToken))
             {
                 solution.Add(currentRoom);
                 return true;
@@ -186,8 +189,10 @@ public class MyAgent : MonoBehaviour
         return false;
     }
 
-    public async Task<bool> VisitNodeMultithread(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs)
+    public async Task<bool> VisitNodeMultithread(Room currentRoom, Room target, Stack<Room> path, List<Room> solution, int runs, CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         if (currentRoom.HasBeenVisitedBy(this))
             return false;
 
@@ -203,7 +208,9 @@ public class MyAgent : MonoBehaviour
 
         foreach (var neighbor in neighbours)
         {
-            if (await Task.Run(() => VisitNodeMultithread(neighbor, target, path, solution, runs)))
+            cancellationToken.ThrowIfCancellationRequested();
+
+            if (await Task.Run(() => VisitNodeMultithread(neighbor, target, path, solution, runs, cancellationToken)))
             {
                 solution.Add(currentRoom);
                 return true;
@@ -299,27 +306,6 @@ public class MyAgent : MonoBehaviour
         return 14 * distX + 10 * (distY - distX);
     }
 
-
-    public void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Alpha1))
-        {
-            TestNoAsync();
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha2))
-        {
-            TestAsync();
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha3))
-        {
-            TestMultithread();
-        }
-        if (Input.GetKeyDown(KeyCode.Alpha4))
-        {
-            TestAStar();
-        }
-    }
-
     public async void RepeatPathFind(EPathFindMode mode)
     {
 
@@ -369,14 +355,14 @@ public class MyAgent : MonoBehaviour
         }
     }
 
-    public async Task asyncRandomLoopAlgorithm(Func<Task> awaitablePathfindMethod, CancellationToken cancellationToken)
+    public async Task asyncRandomLoopAlgorithm(Func<CancellationToken, Task> awaitablePathfindMethod, CancellationToken cancellationToken)
     {
         while (!cancellationToken.IsCancellationRequested)
         {
             erasePath(_currentPath);
 
             _target = _dungeon.RoomOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _dungeon.RoomOnBoard.Count)];
-            await awaitablePathfindMethod();
+            await awaitablePathfindMethod(cancellationToken);
 
             if (SuperClass.Instance.AutoDraw)
                 drawPath();
