@@ -308,6 +308,8 @@ public class PathfindAgent : MonoBehaviour
             _currentPath = pathFindMethod();
             stopwatch.Stop();
 
+            cancellationToken.ThrowIfCancellationRequested();
+
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,
                                            _dungeon.RoomOnBoard.Count,
@@ -342,6 +344,8 @@ public class PathfindAgent : MonoBehaviour
             var stopwatch = Stopwatch.StartNew();
             _currentPath = await awaitablePathfindMethod(cancellationToken);
             stopwatch.Stop();
+
+            cancellationToken.ThrowIfCancellationRequested();
 
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,

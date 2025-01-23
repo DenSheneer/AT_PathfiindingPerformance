@@ -13,7 +13,7 @@ public class UI_Script : MonoBehaviour
     [SerializeField] private Toggle _normalReapeatToggle;
     [SerializeField] private Toggle _asyncRepeatToggle;
     [SerializeField] private Toggle _MTReapeatToggle;
-    [SerializeField] private Toggle _aStarReapeatToggle;
+    [SerializeField] private Toggle _aStarRepeatToggle;
 
     [SerializeField] private Button _generateButton;
     [SerializeField] private Button _resetButton;
@@ -23,29 +23,34 @@ public class UI_Script : MonoBehaviour
     private PathfindAgent[] _agents;
     private EPathFindMode _currentMode;
     private int _runs;
+    private Toggle[] _toggles;
 
-    private void Awake()
+    private void Start()
     {
         _dungeon.OnDungeonGenerated += () =>
         {
-            setPathfindingButtonsActive(true);
+            setPathfindingButtonsInteractivity(true);
             setGenerateButtonActive(false);
+        };
+
+        _toggles = new Toggle[]
+        {
+            _normalReapeatToggle,
+            _asyncRepeatToggle,
+            _MTReapeatToggle,
+            _aStarRepeatToggle
         };
 
         _agents = FindObjectsByType<PathfindAgent>(FindObjectsSortMode.None);
         subscribeToAgents(_agents);
 
-        _normalReapeatToggle.isOn = false;
-        _asyncRepeatToggle.isOn = false;
-        _MTReapeatToggle.isOn = false;
-        _aStarReapeatToggle.isOn = false;
+        setPathfindingButtonsOff(true);
+        setPathfindingButtonsInteractivity(false);
 
-        setPathfindingButtonsActive(false);
-
-        _normalReapeatToggle.onValueChanged.AddListener((isActive) => { setAgentsPathfindMode(isActive, EPathFindMode.DFS); });
-        _asyncRepeatToggle.onValueChanged.AddListener((isActive) => { setAgentsPathfindMode(isActive, EPathFindMode.AsyncDFS); });
-        _MTReapeatToggle.onValueChanged.AddListener((isActive) => { setAgentsPathfindMode(isActive, EPathFindMode.MT_DFS); });
-        _aStarReapeatToggle.onValueChanged.AddListener((isActive) => { setAgentsPathfindMode(isActive, EPathFindMode.Astar); });
+        _normalReapeatToggle.onValueChanged.AddListener((isActive) => { setPathfindingButtonsOff(isActive, _normalReapeatToggle); setAgentsPathfindMode(isActive, EPathFindMode.DFS); });
+        _asyncRepeatToggle.onValueChanged.AddListener((isActive) => { setPathfindingButtonsOff(isActive, _asyncRepeatToggle); setAgentsPathfindMode(isActive, EPathFindMode.AsyncDFS); });
+        _MTReapeatToggle.onValueChanged.AddListener((isActive) => { setPathfindingButtonsOff(isActive, _MTReapeatToggle); setAgentsPathfindMode(isActive, EPathFindMode.MT_DFS); });
+        _aStarRepeatToggle.onValueChanged.AddListener((isActive) => { setPathfindingButtonsOff(isActive, _aStarRepeatToggle); setAgentsPathfindMode(isActive, EPathFindMode.Astar); });
     }
 
     private void subscribeToAgents(PathfindAgent[] agents)
@@ -73,12 +78,23 @@ public class UI_Script : MonoBehaviour
         _generateButton.interactable = isActive;
     }
 
-    private void setPathfindingButtonsActive(bool isActive)
+    private void setPathfindingButtonsInteractivity(bool isActive)
     {
-        _normalReapeatToggle.interactable = isActive;
-        _asyncRepeatToggle.interactable = isActive;
-        _MTReapeatToggle.interactable = isActive;
-        _aStarReapeatToggle.interactable = isActive;
+        foreach (Toggle toggle in _toggles)
+        {
+            toggle.interactable = isActive;
+        }
+    }
+    private void setPathfindingButtonsOff(bool isActive, Toggle exception = null)
+    {
+        if (!isActive) { return; }
+
+        foreach (Toggle toggle in _toggles)
+        {
+            if (toggle == exception) { continue; }
+            else
+                toggle.isOn = false;
+        }
     }
 
     private void setAgentsPathfindMode(bool isActive, EPathFindMode mode)
