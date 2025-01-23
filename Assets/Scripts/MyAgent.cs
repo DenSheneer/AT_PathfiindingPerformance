@@ -337,6 +337,7 @@ public class MyAgent : MonoBehaviour
 
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,
+                                           _dungeon.RoomOnBoard.Count,
                                            _currentpathFindmode,
                                            stopwatch.Elapsed.TotalMilliseconds,
                                            _currentPath.Count,
@@ -380,6 +381,7 @@ public class MyAgent : MonoBehaviour
 
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,
+                                           _dungeon.RoomOnBoard.Count,
                                            _currentpathFindmode,
                                            stopwatch.Elapsed.TotalMilliseconds,
                                            _currentPath.Count,
