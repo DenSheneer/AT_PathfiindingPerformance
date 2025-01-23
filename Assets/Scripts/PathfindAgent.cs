@@ -6,62 +6,36 @@ using System.Threading.Tasks;
 using System;
 using System.Threading;
 using System.Linq;
-using System.Collections;
-using Unity.VisualScripting;
 using System.Diagnostics;
 using Debug = UnityEngine.Debug;
-using TMPro;
 
-public class MyAgent : MonoBehaviour
+public class PathfindAgent : MonoBehaviour
 {
     [SerializeField] DungeonGenerator _dungeon;
     [SerializeField] Room _target = null;
-    [SerializeField] private TMP_Text _textRuns;
 
-    [Header("Materials")]
-    [SerializeField] private Material _multiMaterial;
-    [SerializeField] private Material _normalMaterial;
-    [SerializeField] private Material _asyncMaterial;
-    [SerializeField] private Material _aStarMaterial;
+    private Room _start;
+    List<Room> _currentPath = null;
 
     Task _pathfindLoopTask;
     CancellationTokenSource cancellationTokenSource = null;
     PathfindingJsonWriter writer = new PathfindingJsonWriter();
 
-    private Room _start;
-    public UnityAction<MyAgent> OnDone;
-    List<Room> _currentPath = null;
-    Material _currentMaterial = null;
     private EPathFindMode _currentpathFindmode;
     private List<PathfindResult> _results = new List<PathfindResult>();
 
-    int _runs = 0;
+    public UnityAction<PathfindAgent> OnDFS_Done;
+    public Action<List<Room>, EPathFindMode> OnPathFound;
 
     public void Start()
     {
-
-        SuperClass.Instance.DrawPathButtonClicked.AddListener(() => { drawPath(_currentPath); });
-
-        _dungeon.OnDungeonGenerated += (deepestRoom) =>
+        _dungeon.OnDungeonGenerated += () =>
         {
-            _target = deepestRoom;
             _start = _dungeon.RoomOnBoard[new Vector2Int(0, 0)];
             transform.position = _start.MiddlePosition();
         };
     }
 
-    private void drawPath(List<Room> path)
-    {
-        if (path != null)
-        {
-            foreach (var room in path)
-            {
-                room.SetFloorMaterial(_currentMaterial);
-            }
-            path[0].SetFloorMaterial(_normalMaterial);
-            path[_currentPath.Count - 1].SetFloorMaterial(_normalMaterial);
-        }
-    }
     private void erasePath(List<Room> path)
     {
         if (path != null)
@@ -72,7 +46,7 @@ public class MyAgent : MonoBehaviour
             }
         }
     }
-    public List<Room> PathfindTo()
+    public List<Room> DFS()
     {
         if (_target == null) { return null; }
         List<Room> solution = new List<Room>();
@@ -80,11 +54,12 @@ public class MyAgent : MonoBehaviour
 
         VisitNode(_start, _target, path, solution, 0);
 
-        OnDone?.Invoke(this);
+        OnPathFound?.Invoke(solution, EPathFindMode.DFS);
+        OnDFS_Done?.Invoke(this);
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToMultithread(CancellationToken cancellationToken)
+    public async Task<List<Room>> DFS_Multi(CancellationToken cancellationToken)
     {
         if (_target == null) { return null; }
 
@@ -93,15 +68,16 @@ public class MyAgent : MonoBehaviour
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-           
+
         await Task.Run(() => VisitNodeMultithread(_start, _target, path, solution, 0, cancellationToken));
 
-        OnDone?.Invoke(this);
+        OnPathFound?.Invoke(solution, EPathFindMode.MT_DFS);
+        OnDFS_Done?.Invoke(this);
 
         return solution;
     }
 
-    public async Task<List<Room>> PathfindToAsync(CancellationToken cancellationToken)
+    public async Task<List<Room>> DFS_Async(CancellationToken cancellationToken)
     {
         if (_target == null) { return null; }
 
@@ -111,7 +87,8 @@ public class MyAgent : MonoBehaviour
 
         await VisitNodeAsync(_start, _target, path, solution, 0, cancellationToken);
 
-        OnDone?.Invoke(this);
+        OnPathFound?.Invoke(solution, EPathFindMode.AsyncDFS);
+        OnDFS_Done?.Invoke(this);
         return solution;
     }
 
@@ -223,7 +200,9 @@ public class MyAgent : MonoBehaviour
                 closedSet.Add(currentRoom.roomObject);
                 if (currentRoom.roomObject == _target)
                 {
-                    return retracePath(_start, _target);
+                    var solution = retracePath(_start, _target);
+                    OnPathFound?.Invoke(solution, EPathFindMode.Astar);
+                    return solution;
                 }
 
                 foreach (var neighbour in _dungeon.GetRoomNeighbours(currentRoom.roomObject))
@@ -257,7 +236,6 @@ public class MyAgent : MonoBehaviour
                 }
             }
         }
-        OnDone?.Invoke(this);
         return null;
     }
 
@@ -274,7 +252,7 @@ public class MyAgent : MonoBehaviour
         path.Add(_start);
         path.Reverse();
 
-        OnDone?.Invoke(this);
+        OnDFS_Done?.Invoke(this);
 
         return path;
     }
@@ -296,26 +274,21 @@ public class MyAgent : MonoBehaviour
 
         StopRepeatPathfind();
         _currentpathFindmode = mode;
-        _runs = 0;
 
         switch (mode)
         {
             case EPathFindMode.DFS:
-                _pathfindLoopTask = randomLoopAlgorithm(PathfindTo, cancellationTokenSource.Token);
-                _currentMaterial = _normalMaterial;
+                _pathfindLoopTask = randomLoopAlgorithm(DFS, cancellationTokenSource.Token);
                 break;
             case EPathFindMode.AsyncDFS:
-                _currentMaterial = _asyncMaterial;
-                _pathfindLoopTask = asyncRandomLoopAlgorithm(PathfindToAsync, cancellationTokenSource.Token);
+                _pathfindLoopTask = asyncRandomLoopAlgorithm(DFS_Async, cancellationTokenSource.Token);
                 break;
             case EPathFindMode.MT_DFS:
-                _currentMaterial = _multiMaterial;
 
-                _pathfindLoopTask = asyncRandomLoopAlgorithm(PathfindToMultithread, cancellationTokenSource.Token);
+                _pathfindLoopTask = asyncRandomLoopAlgorithm(DFS_Multi, cancellationTokenSource.Token);
 
                 break;
             case EPathFindMode.Astar:
-                _currentMaterial = _aStarMaterial;
                 _pathfindLoopTask = randomLoopAlgorithm(PathfindAStar, cancellationTokenSource.Token);
                 break;
 
@@ -345,15 +318,7 @@ public class MyAgent : MonoBehaviour
                                            );
 
             _results.Add(result);
-
-            if (SuperClass.Instance.AutoDraw)
-                drawPath(_currentPath);
-
-            _runs++;
-            _textRuns.text = _runs.ToString();
-
             _start = _target;
-
 
             try
             {
@@ -373,7 +338,6 @@ public class MyAgent : MonoBehaviour
             erasePath(_currentPath);
 
             _target = _dungeon.RoomOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _dungeon.RoomOnBoard.Count)];
-            Debug.Log(_target.name);
 
             var stopwatch = Stopwatch.StartNew();
             _currentPath = await awaitablePathfindMethod(cancellationToken);
@@ -389,13 +353,6 @@ public class MyAgent : MonoBehaviour
                                            );
 
             _results.Add(result);
-
-            if (SuperClass.Instance.AutoDraw)
-                drawPath(_currentPath);
-
-            _runs++;
-            _textRuns.text = _runs.ToString();
-
             _start = _target;
 
             try
@@ -427,9 +384,6 @@ public class MyAgent : MonoBehaviour
 
         // Write to JSON
         writer.AppendPathfindingResultToJson($"{Application.persistentDataPath}/PathfindingResult.json", _results);
-        Debug.Log("saved to: " + Application.persistentDataPath);
-
-        // Output file will be saved in the executable's working directory
     }
 }
 

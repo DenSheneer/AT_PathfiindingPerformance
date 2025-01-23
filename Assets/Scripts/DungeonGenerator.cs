@@ -27,7 +27,7 @@ public class DungeonGenerator : MonoBehaviour
     List<Cell> _board;
     Dictionary<Vector2Int, Room> _roomsOnBoard = new Dictionary<Vector2Int, Room>();
 
-    public Action<Room> OnDungeonGenerated;
+    public Action OnDungeonGenerated;
     public Action OnDungeonGenerateStart;
 
     public Dictionary<Vector2Int, Room> RoomOnBoard { get { return _roomsOnBoard; } }
@@ -162,7 +162,7 @@ public class DungeonGenerator : MonoBehaviour
                 }
             }
         }
-        OnDungeonGenerated?.Invoke(_roomsOnBoard.Values.ToArray()[_roomsOnBoard.Count - 1]);
+        OnDungeonGenerated?.Invoke();
 
         for (int i = 0; i < Mathf.Abs(_roomsOnBoard.Count * 0.1f); i++)  //  open all doors of 10% of the rooms
             openRandomRoomDoors();
@@ -248,7 +248,7 @@ public class DungeonGenerator : MonoBehaviour
         return roomNeighbours;
     }
 
-    public List<Room> GetRoomNeighbours(MyAgent agent, Room room)
+    public List<Room> GetRoomNeighbours(PathfindAgent agent, Room room)
     {
         List<Room> roomNeighbours = new List<Room>();
 

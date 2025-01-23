@@ -12,7 +12,7 @@ public class EncapView : MonoBehaviour
         _dungeon.OnDungeonGenerated += MoveCamera;
     }
 
-    private void MoveCamera(Room room)
+    private void MoveCamera()
     {
         Bounds bounds = new Bounds();
         bounds.max = new Vector3(_dungeon.RealSize.x, 0, -_dungeon.RealSize.y);

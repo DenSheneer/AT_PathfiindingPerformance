@@ -24,12 +24,13 @@ public class Floor : MonoBehaviour
     {
         foreach (var tile in _floorMeshes)
         {
-            tile.material = material;
+            if (tile != null && tile.material != null)
+                tile.material = material;
         }
     }
 
     public void RestoreDefaultFloor()
-    {        
+    {
         SetPathMaterial(_defaultFloorMaterial);
     }
 }

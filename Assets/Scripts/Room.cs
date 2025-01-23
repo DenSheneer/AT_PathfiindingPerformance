@@ -10,30 +10,30 @@ public class Room : MonoBehaviour
     private Wall[] _walls = new Wall[4];
     private Vector2Int _boardPosition;
     private bool[] _doorBools = { false, false, false, false };
-    private HashSet<MyAgent> visited = new HashSet<MyAgent>();
+    private HashSet<PathfindAgent> visited = new HashSet<PathfindAgent>();
 
     public Vector2Int BoardPosition { get { return _boardPosition; } }
     public bool[] Doors { get { return _doorBools; } set { _doorBools = value; } }
 
     public RoomData RoomData;
-    public Dictionary<MyAgent, RoomData> pathfindingData = new Dictionary<MyAgent, RoomData>();
+    public Dictionary<PathfindAgent, RoomData> pathfindingData = new Dictionary<PathfindAgent, RoomData>();
 
-    public void Visit(MyAgent agent)
+    public void Visit(PathfindAgent agent)
     {
         visited.Add(agent);
-        agent.OnDone += agentDispose;
+        agent.OnDFS_Done += agentDispose;
     }
-    public bool HasBeenVisitedBy(MyAgent agent)
+    public bool HasBeenVisitedBy(PathfindAgent agent)
     {
         return visited.Contains(agent);
     }
 
-    private void agentDispose(MyAgent agent)
+    private void agentDispose(PathfindAgent agent)
     {
         visited.Remove(agent);
         pathfindingData.Remove(agent);
 
-        agent.OnDone -= agentDispose;
+        agent.OnDFS_Done -= agentDispose;
     }
 
     public void Initialize(Transform parent, Wall[] walls, Floor floor, Vector2Int boardPosition)
@@ -73,10 +73,10 @@ public class Room : MonoBehaviour
         _floor.RestoreDefaultFloor();
     }
 
-    public void MakeNewRoomData(MyAgent agent, RoomData roomData)
+    public void MakeNewRoomData(PathfindAgent agent, RoomData roomData)
     {
         pathfindingData.Add(agent, roomData);
-        agent.OnDone += agentDispose;
+        agent.OnDFS_Done += agentDispose;
     }
 }
 
