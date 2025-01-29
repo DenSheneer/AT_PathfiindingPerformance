@@ -73,12 +73,12 @@ crashlytics-build.properties
 
 # Default ignored files
 /shelf/
-/workspace.xml
+*workspace.xml
 # Rider ignored files
 /.idea.AT_PathfindingPerformance.iml
-/projectSettingsUpdater.xml
-/modules.xml
-/contentModel.xml
+*projectSettingsUpdater.xml
+*modules.xml
+*contentModel.xml
 # Editor-based HTTP Client requests
 /httpRequests/
 # Datasource local storage ignored files
