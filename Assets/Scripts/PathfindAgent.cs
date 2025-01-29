@@ -68,7 +68,6 @@ public class PathfindAgent : MonoBehaviour
         List<Room> solution = new List<Room>();
         Stack<Room> path = new Stack<Room>();
 
-
         await Task.Run(() => VisitNodeMultithread(_start, _target, path, solution, 0, cancellationToken));
 
         OnPathFound?.Invoke(solution, EPathFindMode.MT_DFS);
@@ -308,7 +307,7 @@ public class PathfindAgent : MonoBehaviour
             _currentPath = pathFindMethod();
             stopwatch.Stop();
 
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested) { return; }
 
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,
@@ -338,14 +337,14 @@ public class PathfindAgent : MonoBehaviour
         while (!cancellationToken.IsCancellationRequested)
         {
             erasePath(_currentPath);
-
+            
             _target = _dungeon.RoomOnBoard.Values.ToArray()[SuperClass.Instance.Random.Next(0, _dungeon.RoomOnBoard.Count)];
 
             var stopwatch = Stopwatch.StartNew();
             _currentPath = await awaitablePathfindMethod(cancellationToken);
             stopwatch.Stop();
 
-            cancellationToken.ThrowIfCancellationRequested();
+            if (cancellationToken.IsCancellationRequested) { return; }
 
             var result = new PathfindResult(SuperClass.Instance.SizeX,
                                            SuperClass.Instance.SizeY,
@@ -376,18 +375,20 @@ public class PathfindAgent : MonoBehaviour
         if (cancellationTokenSource != null)
         {
             cancellationTokenSource.Cancel();
-            cancellationTokenSource.Dispose();
+            cancellationTokenSource.Dispose();        
         }
-        if (_pathfindLoopTask != null)
-        {
-            _pathfindLoopTask.Dispose();
-        }
+
 
         cancellationTokenSource = new CancellationTokenSource();
         _pathfindLoopTask = null;
 
         // Write to JSON
         writer.AppendPathfindingResultToJson($"{Application.persistentDataPath}/PathfindingResult.json", _results);
+    }
+    
+    void OnApplicationQuit()
+    {
+        StopRepeatPathfind();
     }
 }
 
